@@ -35,3 +35,14 @@ Makefile Tools // make文件工具
 ![](./images/breakPoint.png)
 
 ## 2. 代码分析
+
+```
+原始文件
+
+--- scripts
+--- source 
+--- Makefile 
+
+
+
+```
