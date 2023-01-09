@@ -39,10 +39,10 @@ Makefile Tools // make文件工具
 ```
 原始文件
 
---- scripts
---- source 
---- Makefile 
-
-
+--- scripts // 代码启动调试
+--- source  // 代码
+--- Makefile  // 编译文件，最终生成os.bin
+--- image  // 镜像文件
 
 ```
+
