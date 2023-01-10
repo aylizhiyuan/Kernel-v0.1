@@ -43,6 +43,24 @@ Makefile Tools // make文件工具
 --- source  // 代码
 --- Makefile  // 编译文件，最终生成os.bin
 --- image  // 镜像文件
+```
+
+### 链接程序分析
 
 ```
+all: source/os.c source/os.h source/start.S
+	$(TOOL_PREFIX)gcc $(CFLAGS) source/start.S // 编译start.S汇编文件，生成start.o文件
+	$(TOOL_PREFIX)gcc $(CFLAGS) source/os.c	 // 编译os.cC语言文件,生成os.o文件
+	$(TOOL_PREFIX)ld -m elf_i386 -Ttext=0x7c00 start.o os.o -o os.elf // 将生成的.o文件进行链接,生成os.elf文件,并指定生成的代码段的内存地址是0x7c00
+	${TOOL_PREFIX}objcopy -O binary os.elf os.bin // 复制成为os.bin文件
+	${TOOL_PREFIX}objdump -x -d -S  os.elf > os_dis.txt	 // 头部文件内容输出
+	${TOOL_PREFIX}readelf -a  os.elf > os_elf.txt	 // 头部文件内容输出
+	dd if=os.bin of=../image/disk.img conv=notrunc // 将os.bin 写入到disk.img文件中，不截短输出文件
+
+```
+ ***目的: 将代码段放置到0x7c00处，qemu会从这个内存的这个地方读取***
+
+### 让计算机跑我们的程序
+
+
 
