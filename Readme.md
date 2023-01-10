@@ -62,5 +62,10 @@ all: source/os.c source/os.h source/start.S
 
 ### 让计算机跑我们的程序
 
+1. 首先 终端 -->  运行任务 : 启动我们的qemu任务
+2. 运行 ---> 启动调试 : 启动我们的qemu调试工具
+
+
+
 
 

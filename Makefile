@@ -19,7 +19,7 @@ all: source/os.c source/os.h source/start.S
 	${TOOL_PREFIX}objcopy -O binary os.elf os.bin
 	${TOOL_PREFIX}objdump -x -d -S  os.elf > os_dis.txt	
 	${TOOL_PREFIX}readelf -a  os.elf > os_elf.txt	
-	dd if=os.bin of=../image/disk.img conv=notrunc
+	dd if=os.bin of=./image/disk.img conv=notrunc
 
 # 清理
 clean:

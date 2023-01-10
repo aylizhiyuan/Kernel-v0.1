@@ -12,4 +12,5 @@
         "stdint.h": "c",
         "stdint-gcc.h": "c"
     },
+    "debug.allowBreakpointsEverywhere": true,
 }
