@@ -25,7 +25,7 @@ read_self_all:
 	mov $_start_32, %bx // 读取到的内存地址
 	mov $0x2, %cx // ch:磁道号, cl:起始扇区
 	mov $0x0240, %ax // ah:0x42读磁盘命令,al=0x40 64个扇区,多读一些,32kb
-	mov %0x80, %dx // dh:磁头号 ,dl驱动器号0x80 磁盘1
+	mov $0x80, %dx // dh:磁头号 ,dl驱动器号0x80 磁盘1
 	int $0x0013 // 调用中断,读取磁盘信息
 	jc read_self_all // 读取失败则重复	
 	jmp .

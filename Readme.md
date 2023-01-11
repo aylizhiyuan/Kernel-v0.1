@@ -32,7 +32,7 @@ Makefile Tools // make文件工具
 
 ### 设置vscode任何文件都可以打断点
 
-![](./images/breakPoint.png)
+![](./images/breakpo.png)
 
 ## 2. 项目运行
 
@@ -70,7 +70,9 @@ all: source/os.c source/os.h source/start.S
 ### 调试启动步骤
 
 1. 首先 终端 -->  运行任务 : 启动我们的qemu任务
+![](./images/%E8%BF%90%E8%A1%8C%E4%BB%BB%E5%8A%A1.png)
 2. 运行 ---> 启动调试 : 启动我们的qemu调试工具
+![](./images/%E5%90%AF%E5%8A%A8%E8%B0%83%E8%AF%95.png)
 
 > Mac下稍微麻烦一点,要先启动qemu后再开启调试
 
