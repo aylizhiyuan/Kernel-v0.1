@@ -69,6 +69,7 @@ all: source/os.c source/os.h source/start.S
 
 ### 调试启动步骤
 
+调试模式:
 1. 首先 终端 -->  运行任务 : 启动我们的qemu任务
 ![](./images/%E8%BF%90%E8%A1%8C%E4%BB%BB%E5%8A%A1.png)
 2. 运行 ---> 启动调试 : 启动我们的qemu调试工具
@@ -76,6 +77,15 @@ all: source/os.c source/os.h source/start.S
 
 > Mac下稍微麻烦一点,要先启动qemu后再开启调试
 
+全速飞奔模式:
+
+去除scripts中的参数
+
+```
+# 适用于mac
+# 将 -s  -S 参数去除即可
+qemu-system-i386 -m 128M -s -S -drive file=disk.img,index=0,media=disk,format=raw 
+```
 
 ## 3. 添加引导标志
 
