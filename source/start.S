@@ -18,9 +18,22 @@ _start:
 	mov %ax, %es			// 设置数据段
 	mov %ax, %ss			// 设置栈段
 	mov $_start, %esp		// 设置栈的起始地址
-
+	
+	// 计算机上电启动之后,只读取了512个字节到0x7c00处
+	// 我们接下来,要将自己的其余的部分读取到0x7E00处,即0x7c00后的512个字节
+read_self_all:
+	mov $_start_32, %bx // 读取到的内存地址
+	mov $0x2, %cx // ch:磁道号, cl:起始扇区
+	mov $0x0240, %ax // ah:0x42读磁盘命令,al=0x40 64个扇区,多读一些,32kb
+	mov %0x80, %dx // dh:磁头号 ,dl驱动器号0x80 磁盘1
+	int $0x0013 // 调用中断,读取磁盘信息
+	jc read_self_all // 读取失败则重复	
 	jmp .
 	
 	// 跳到引导标志, 由bios在上电后检查
 	.org 0x1fe			// 引导标志
 	.byte 0x55, 0xaa
+
+_start_32:
+	.fill 64 * 1024, 1, 0x35  // 填充32K,全部为0x35
+

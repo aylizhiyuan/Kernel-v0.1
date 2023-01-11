@@ -54,7 +54,7 @@ Makefile Tools // make文件工具
 
 ### makeFile文件分析
 
-```
+```c
 all: source/os.c source/os.h source/start.S
 	$(TOOL_PREFIX)gcc $(CFLAGS) source/start.S // 编译start.S汇编文件，生成start.o文件
 	$(TOOL_PREFIX)gcc $(CFLAGS) source/os.c	 // 编译os.cC语言文件,生成os.o文件
@@ -83,7 +83,7 @@ all: source/os.c source/os.h source/start.S
 
 ## 4. 设置寄存器的初始化值
 
-```
+```c
 此时代码应该是从0x7c00处开始执行的,$_start代表着内存地址0x7c00
 	mov $0, %ax				// 设置代码段
 	mov %ax, %ds			// 设置数据段
@@ -93,8 +93,27 @@ all: source/os.c source/os.h source/start.S
 
 // 这里会将代码段寄存器、数据段寄存器、栈段寄存器设置为0,即便不设置，初始化的值也是0，栈顶是0x7c00往上，栈是从高地址向低地址增长
 ```
+此时，计算机应该还是实模式，实模式下访问的是真实的内存地址,大概的访问范围是0 - 1M , 2的20次方 === 1M ,寻址范围是0x00000 - 0xFFFFF,为啥不是2的16次方呢？主要是最早的8086的寄存器都是16位的，后面内存扩充成1M，16位的寄存器无法访问到全部，就采用了段寄存器 << 4  + 偏移(16)位的组合来形成20位的地址,实现对1MB内存的访问
 
+## 5. 加载自己的剩余部分
 
+```c
+read_self_all:
+	mov $_start_32, %bx // 读取到的内存地址
+	mov $0x2, %cx // ch:磁道号, cl:起始扇区
+	mov $0x0240, %ax // ah:0x42读磁盘命令,al=0x40 64个扇区,多读一些,32kb
+	mov %0x80, %dx // dh:磁头号 ,dl驱动器号0x80 磁盘1
+	int $0x0013 // 调用中断,读取磁盘信息
+	jc read_self_all // 读取失败则重复
+
+第一个扇区           第2到64个扇区
+   ↓                     ↓
+---------- | -----------------------|
+  0x7c00   |       0x7E00           |
+---------- | -----------------------|		
+```
+	 
+    
 
 
 
