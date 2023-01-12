@@ -28,12 +28,31 @@ read_self_all:
 	mov $0x80, %dx // dh:磁头号 ,dl驱动器号0x80 磁盘1
 	int $0x0013 // 调用中断,读取磁盘信息
 	jc read_self_all // 读取失败则重复	
-	jmp .
+	
+	// 加载idt和gdt表,进入保护模式
+	cli // 关中断
+	lgdt gdt_desc // 加载gdt表
+	mov $1,%eax
+	lmsw %ax // 设置PE位,进入保护模式
+	jmp $KERNEL_CODE_SEG, $_start_32 // 进入32位保护模式代码,可以运行32位指令
 	
 	// 跳到引导标志, 由bios在上电后检查
 	.org 0x1fe			// 引导标志
 	.byte 0x55, 0xaa
 
+	// 32位保护模式,位于512字节后
+	.code32
+	.text
+
 _start_32:
-	.fill 64 * 1024, 1, 0x35  // 填充32K,全部为0x35
+	mov $KERNEL_CODE_SEG, %ax
+	mov %ax, %ds
+	mov %ax, %es
+	mov %ax, %ss
+	mov $_start, %esp
+	jmp .
+
+// gdt描述符,由lgdt加载
+gdt_desc: .word (256*8) - 1
+	.long gdt_table
 
