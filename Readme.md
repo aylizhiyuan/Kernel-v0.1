@@ -111,7 +111,7 @@ qemu-system-i386 -m 128M -s -S -drive file=disk.img,index=0,media=disk,format=ra
 
 ```c
 read_self_all:
-	mov $_start_32, %bx // 读取到的内存地址
+	mov $_start_32, %bx // 读取到的内存地址 0x7E00
 	mov $0x2, %cx // ch:磁道号, cl:起始扇区
 	mov $0x0240, %ax // ah:0x42读磁盘命令,al=0x40 64个扇区,多读一些,32kb
 	mov %0x80, %dx // dh:磁头号 ,dl驱动器号0x80 磁盘1
@@ -125,8 +125,40 @@ read_self_all:
 ---------- | -----------------------|		
 ```
 	 
-    
+## 6. 开启保护模式,从16位到32位
 
+1. 首先关闭中断
+
+```c
+cli // 关中断
+```
+2. 加载gdt表
+```c
+lgdt gdt_desc // 加载gdt表
+// gdt描述符,由lgdt加载
+gdt_desc: .word (256*8) - 1
+	.long gdt_table
+// 表的内容
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+
+struct {uint16_t limit_l, base_l, basehl_attr, base_limit;}gdt_table[256] __attribute__((aligned(8))) = {
+    // 0x00cf9a000000ffff - 从0地址开始，P存在，DPL=0，Type=非系统段，32位代码段（非一致代码段），界限4G，
+    [KERNEL_CODE_SEG / 8] = {0xffff, 0x0000, 0x9a00, 0x00cf},
+    // 0x00cf93000000ffff - 从0地址开始，P存在，DPL=0，Type=非系统段，数据段，界限4G，可读写
+    [KERNEL_DATA_SEG/ 8] = {0xffff, 0x0000, 0x9200, 0x00cf},
+};
+```
+
+3. 设置PE位，进入保护模式
+
+```c
+mov $1,%eax
+lmsw %ax // 设置PE位,进入保护模式
+```
+
+4. 
 
 
 

@@ -22,7 +22,7 @@ _start:
 	// 计算机上电启动之后,只读取了512个字节到0x7c00处
 	// 我们接下来,要将自己的其余的部分读取到0x7E00处,即0x7c00后的512个字节
 read_self_all:
-	mov $_start_32, %bx // 读取到的内存地址
+	mov $_start_32, %bx // 读取到的内存地址,0x7E00地址的地方
 	mov $0x2, %cx // ch:磁道号, cl:起始扇区
 	mov $0x0240, %ax // ah:0x42读磁盘命令,al=0x40 64个扇区,多读一些,32kb
 	mov $0x80, %dx // dh:磁头号 ,dl驱动器号0x80 磁盘1
@@ -43,9 +43,9 @@ read_self_all:
 	// 32位保护模式,位于512字节后
 	.code32
 	.text
-
+	// 此时这里应该就已经跳转到0x7E00
 _start_32:
-	mov $KERNEL_CODE_SEG, %ax
+	mov $KERNEL_DATA_SEG, %ax
 	mov %ax, %ds
 	mov %ax, %es
 	mov %ax, %ss
