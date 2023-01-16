@@ -6,6 +6,9 @@
 	// 声明本地以下符号是全局的，在其它源文件中可以访问
 	.global _start
 
+	// 当需要引用外部的符号是,使用extern声明。相当于C语言中的extern
+	.extern gdt_table, pg_dir
+
 	// 指定以下的代码生成16位的机器指令 这样才能在启动时的实模式下运行
   	.code16
 
@@ -34,7 +37,7 @@ read_self_all:
 	lgdt gdt_desc // 加载gdt表
 	mov $1,%eax
 	lmsw %ax // 设置PE位,进入保护模式
-	jmp $KERNEL_CODE_SEG, $_start_32 // 进入32位保护模式代码,可以运行32位指令
+	jmp $KERNEL_CODE_SEG, $_start_32 // 将cs设置成8
 	
 	// 跳到引导标志, 由bios在上电后检查
 	.org 0x1fe			// 引导标志
@@ -50,7 +53,25 @@ _start_32:
 	mov %ax, %es
 	mov %ax, %ss
 	mov $_start, %esp
+	
+
+	// 跳转到C语言中运行
+	call os_init
+
+	// 打开分页机制
+	mov $pg_dir, %eax
+	mov %eax, %cr3
+
+	mov %cr4,%eax
+	orl $(1 << 4), %eax 
+	mov %eax, %cr4
+
+	mov %cr0, %eax
+	orl $(1 << 31), %eax
+	mov %eax, %cr0
+
 	jmp .
+
 
 // gdt描述符,由lgdt加载
 gdt_desc: .word (256*8) - 1

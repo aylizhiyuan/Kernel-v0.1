@@ -149,6 +149,10 @@ struct {uint16_t limit_l, base_l, basehl_attr, base_limit;}gdt_table[256] __attr
     // 0x00cf93000000ffff - 从0地址开始，P存在，DPL=0，Type=非系统段，数据段，界限4G，可读写
     [KERNEL_DATA_SEG/ 8] = {0xffff, 0x0000, 0x9200, 0x00cf},
 };
+
+0 置空的表项
+1 内核代码段  0 - 4G
+2 内核数据段  0 - 4G
 ```
 
 3. 设置PE位，进入保护模式
@@ -158,7 +162,29 @@ mov $1,%eax
 lmsw %ax // 设置PE位,进入保护模式
 ```
 
-4. 
+4. 进入32位指令下执行
+
+```c
+// 此时，我们已经设置好了代码段寄存器的值,就可以直接用jmp跳转过去执行了
+jmp $KERNEL_CODE_SEG, $_start_32 // 段选择子，偏移量 0x7E00
+_start_32:
+	mov $KERNEL_DATA_SEG, %ax // 将数据段寄存器设置为16,偏移量0x0000
+	mov %ax, %ds
+	mov %ax, %es
+	mov %ax, %ss
+	mov $_start, %esp
+	jmp .
+```
+
+## 7. 进入分页模式
+
+回顾: 代码段寄存器1 ---> gdt表 1 : 0x7E00 (_start_32的代码位置), 内存寻址空间从0x00000000 - 0xFFFFFFFF
+数据段寄存器2 ---> gdt表 2 : 0x0000 (空),内存寻址空间是从0x00000000 - 0xFFFFFFFF
+
+1. 
+
+
+
 
 
 
