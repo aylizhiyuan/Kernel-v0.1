@@ -4,10 +4,10 @@
 	#include "os.h"
 
 	// 声明本地以下符号是全局的，在其它源文件中可以访问
-	.global _start
+	.global _start, timer_init
 
 	// 当需要引用外部的符号是,使用extern声明。相当于C语言中的extern
-	.extern gdt_table, pg_dir
+	.extern gdt_table, pg_dir, idt_table
 
 	// 指定以下的代码生成16位的机器指令 这样才能在启动时的实模式下运行
   	.code16
@@ -35,6 +35,7 @@ read_self_all:
 	// 加载idt和gdt表,进入保护模式
 	cli // 关中断
 	lgdt gdt_desc // 加载gdt表
+	lidt idt_desc // 加载中断表
 	mov $1,%eax
 	lmsw %ax // 设置PE位,进入保护模式
 	jmp $KERNEL_CODE_SEG, $_start_32 // 将cs设置成8
@@ -70,10 +71,24 @@ _start_32:
 	orl $(1 << 31), %eax
 	mov %eax, %cr0
 
+	sti  // 开中断
 	jmp .
 
-
+// 定时器0中断函数
+timer_init:
+	push %ds
+	pusha // 保护现场,段寄存器不用保存
+	mov $0x20, %al
+	outb %al, $0x20 // 发送EOI
+	popa // 恢复现场
+	pop %ds 
+	iret // 中断返回
 // gdt描述符,由lgdt加载
 gdt_desc: .word (256*8) - 1
 	.long gdt_table
+
+// idt描述符,由idt加载
+idt_desc: .word (256*8) - 1
+	.long idt_table
+
 
