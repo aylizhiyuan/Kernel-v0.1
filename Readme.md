@@ -137,8 +137,8 @@ cli // 关中断
 ```c
 lgdt gdt_desc // 加载gdt表
 // gdt描述符,由lgdt加载
-gdt_desc: .word (256*8) - 1
-	.long gdt_table
+gdt_desc: .word (256*8) - 1 // 大小
+	.long gdt_table // 表的地址
 // 表的内容
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
@@ -194,11 +194,66 @@ _start_32:
 下面，我们要建立2个映射。第一个为页大小为4MB的映射，从虚拟地址0-4MB映射到物理地址0-4M，以便我们的程序仍然存在于它应该存在的地址，不至于程序跑飞。第二个为虚拟地址0x80000000到map_pyh_buffer的映射
 
 
-1. 设置页表
+1. 设置页目录PDE
 
 ```c
+// 跳转到C语言中运行
+call os_init
 
+#define PDE_P			(1 << 0) // 存在位
+#define PDE_W			(1 << 1) // 读写位
+#define PDE_U			(1 << 2) // 权限位
+#define PDE_PS			(1 << 7) // 声明4M对齐
+// 设置目录表 4kb对齐
+uint32_t pg_dir[1024] __attribute__((aligned(4096))) = {
+    [0] = (0) | PDE_P | PDE_PS | PDE_W | PDE_U,	  // 开始位置0 - 4MB 映射到物理内存 0 - 4MB
+};
+// 这样，页目录表中第0项就存放着0-4MB的物理映射
 ```
+
+2. 设置cr3寄存器
+
+```c
+mov $pg_dir, %eax // 将页目录的地址给到cr3寄存器
+mov %eax, %cr3
+```
+
+3. 设置cr0寄存器
+
+```c
+mov %cr0, %eax
+orl $(1 << 31), %eax // 将cr0的最高位设置为1,打开分页机制
+mov %eax, %cr0
+```
+
+4. 设置cr4寄存器
+
+```c
+mov %cr4,%eax
+orl $(1 << 4), %eax  // 允许使用4M到4M之间的映射
+mov %eax, %cr4
+```
+
+5. 将0x80000000的虚拟地址映射到map_pyh_buffer
+
+```c
+// 定义一个数组
+uint8_t map_phy_buffer[4096] __attribute__((aligned(4096)));
+
+// 定义一下二级页表
+static uint32_t pg_table[1024] __attribute__((aligned(4096))) = {PDE_U};    // 要给个值，否则其实始化值不确定
+
+//  完成映射关系
+void os_init (void) {
+	// 0x80000000地址的高10位作为索引（左移22位）,它的值是二级页表的值
+    pg_dir[MAP_ADDR >> 22] = (uint32_t)pg_table | PDE_P | PDE_W | PDE_U;
+	// 0x8000000地址的中间10位作为索引(左移12位 & 0x3FF),它的值就是我要映射的数组的值
+    pg_table[(MAP_ADDR >> 12) & 0x3FF] = (uint32_t)map_phy_buffer| PDE_P | PDE_W | PDE_U;
+};
+// 完成映射后，0x80000000的虚拟地址就对应着map_phy_buffer的物理地址了
+```
+
+
 
 
 
