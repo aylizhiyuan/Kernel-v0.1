@@ -255,10 +255,74 @@ void os_init (void) {
 
 ## 8. 开启定时中断
 
+1. 8253芯片设置
 
+```c
+// offset_l 低16位偏移 selector 段选择子 attr 属性 offset_h 高16位偏移
+struct {uint16_t offset_l, selector, attr, offset_h;} idt_table[256] __attribute__((aligned(8))) = {1};
+// 在c语言中调用汇编指令
+void outb(uint8_t data, uint16_t port) {
+	// data要写的数据
+	// port 端口
+	// "d" "a" 代表寄存器al dx
+	__asm__ __volatile__("outb %[v], %[p]" : : [p]"d" (port), [v]"a" (data));
+}
 
+// 初始化8259中断控制器，打开定时器中断
+    outb(0x11, 0x20);       // 开始初始化主芯片
+    outb(0x11, 0xA0);       // 初始化从芯片
+    outb(0x20, 0x21);       // 写ICW2，告诉主芯片中断向量从0x20开始
+    outb(0x28, 0xa1);       // 写ICW2，告诉从芯片中断向量从0x28开始
+    outb((1 << 2), 0x21);   // 写ICW3，告诉主芯片IRQ2上连接有从芯片
+    outb(2, 0xa1);          // 写ICW3，告诉从芯片连接g到主芯片的IRQ2上
+    outb(0x1, 0x21);        // 写ICW4，告诉主芯片8086、普通EOI、非缓冲模式
+    outb(0x1, 0xa1);        // 写ICW4，告诉主芯片8086、普通EOI、非缓冲模式
+    outb(0xfe, 0x21);       // 开定时中断，其它屏幕
+    outb(0xff, 0xa1);       // 屏幕所有中断
 
+    // 设置定时器，每100ms中断一次
+    int tmo = (1193180);      // 时钟频率为1193180
+    outb(0x36, 0x43);               // 二进制计数、模式3、通道0
+    outb((uint8_t)tmo, 0x40);
+    outb(tmo >> 8, 0x40);
 
+	// 添加中断 0x20是中断表中的定时中断
+    idt_table[0x20].offset_h = (uint32_t)timer_init >> 16;
+    idt_table[0x20].offset_l = (uint32_t)timer_init & 0xffff;
+    idt_table[0x20].selector = KERNEL_CODE_SEG; // 选择子指向代码段
+    idt_table[0x20].attr = 0x8E00;      // 存在，DPL=0, 中断门
+
+```
+
+2. idt_table加载到寄存器中去
+
+```c
+lidt idt_desc // 加载中断表
+// idt描述符,由idt加载
+idt_desc: .word (256*8) - 1
+	.long idt_table
+```
+
+3. 添加中断处理函数
+
+```c
+// 定时器0中断函数
+timer_init:
+	push %ds
+	pusha // 保护现场,段寄存器不用保存
+	mov $0x20, %al
+	outb %al, $0x20 // 发送EOI
+	popa // 恢复现场
+	pop %ds 
+	iret // 中断返回
+```
+
+4. 开启中断
+
+```c
+	... 
+	sti  // 开中断
+```
 
 
 
