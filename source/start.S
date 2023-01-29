@@ -7,7 +7,7 @@
 	.global _start, timer_init
 
 	// 当需要引用外部的符号是,使用extern声明。相当于C语言中的extern
-	.extern gdt_table, pg_dir, idt_table
+	.extern gdt_table, pg_dir, idt_table, task_0
 
 	// 指定以下的代码生成16位的机器指令 这样才能在启动时的实模式下运行
   	.code16
@@ -71,8 +71,21 @@ _start_32:
 	orl $(1 << 31), %eax
 	mov %eax, %cr0
 
-	sti  // 开中断
-	jmp .
+	// 下面模拟中断返回,从而实现从特权级0到特权级3的变化
+	// 中断发生时,会自动压入原SS, ESP, EFLAGS, CS, EIP到栈中
+	push $APP_DATA_SEG
+	push $task0_dpl3_stack + 1024	// 特权级3时的栈
+	push $0			// 中断暂时关掉 0x202						// EFLAGS
+	push $APP_CODE_SEG				// CPL=3时的选择子
+	push $task_0_entry					// eip
+	iret							// 从中断返回,将切换至任务0
+
+task_0_entry:
+	// 进入任务0时,需要重设其数据段寄存器为特权级3的
+	mov %ss, %ax
+	mov %ax, %ds
+	mov %ax, %es
+	jmp task_0			// 跳转到任务0运行
 
 // 定时器0中断函数
 timer_init:
