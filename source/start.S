@@ -7,7 +7,7 @@
 	.global _start, timer_init
 
 	// 当需要引用外部的符号是,使用extern声明。相当于C语言中的extern
-	.extern gdt_table, pg_dir, idt_table, task_0
+	.extern gdt_table, pg_dir, idt_table, task_0,task_sched
 
 	// 指定以下的代码生成16位的机器指令 这样才能在启动时的实模式下运行
   	.code16
@@ -93,6 +93,10 @@ timer_init:
 	pusha // 保护现场,段寄存器不用保存
 	mov $0x20, %al
 	outb %al, $0x20 // 发送EOI
+	// 使用内核的数据段寄存器
+	mov $KERNEL_DATA_SEG, %ax
+	mov %ax, %ds
+	call task_sched // 调用调试函数
 	popa // 恢复现场
 	pop %ds 
 	iret // 中断返回

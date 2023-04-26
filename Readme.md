@@ -313,7 +313,7 @@ timer_init:
 	push %ds // 数据段压栈  
 	pusha // 保护现场,将寄存器全部压栈
 	mov $0x20, %al
-	outb %al, $0x20 // 发送EOI
+	outb %al, $0x20 // 发送EOI 
 	popa // 恢复现场，将所有的寄存器全部出栈
 	pop %ds 
 	iret // 中断返回
@@ -322,15 +322,158 @@ timer_init:
 4. 开启中断
 
 ```c
+_start_32:
 	... 
 	sti  // 开中断
+	jump . 
 ```
 
 ## 9. 切换低特权级
 
 x86提供了特权级机制，用于将不同的代码划分成不同的特权级。其中操作系统运行于最高特权级0，可以执行很多系统指令，如开关中断等。而应用程序工作在最低特权级模式3，只能执行不需要特权的代码。
 
+1.  首先在gdt表中添加两个进程相对应的代码段
 
+```c
+#define APP_CODE_SEG            ((3 * 8) | 3)       // 特权级3
+#define APP_DATA_SEG            ((4 * 8) | 3)       // 特权级3
+
+// 0x00cffa000000ffff - 从0地址开始，P存在，DPL=3，Type=非系统段，32位代码段，界限4G
+[APP_CODE_SEG/ 8] = {0xffff, 0x0000, 0xfa00, 0x00cf},
+// 0x00cff3000000ffff - 从0地址开始，P存在，DPL=3，Type=非系统段，数据段，界限4G，可读写
+[APP_DATA_SEG/ 8] = {0xffff, 0x0000, 0xf300, 0x00cf},
+```
+
+2. 代码从特权级0（内核）切换到特权级3（应用）
+
+```c
+uint32_t task0_dpl3_stack[1024];
+_start_32:
+	... // 之前就是特权级0
+	// 下面模拟中断返回,从而实现从特权级0到特权级3的变化
+	// 中断发生时,会自动压入原SS, ESP, EFLAGS, CS, EIP到栈中
+	push $APP_DATA_SEG
+	push $task0_dpl3_stack + 1024	// 特权级3时的栈
+	push $0			// 中断暂时关掉 0x202						// EFLAGS
+	push $APP_CODE_SEG				// CPL=3时的选择子
+	push $task_0_entry					// eip
+	iret							// 从中断返回,将切换至任务0
+
+task_0_entry:
+	// 进入任务0时,需要重设其数据段寄存器为特权级3的
+	mov %ss, %ax
+	mov %ax, %ds
+	mov %ax, %es
+	jmp task_0			// 跳转到任务0运行	
+
+/**
+ *  任务0
+ */
+void task_0 (void) {
+    // 加上下面这句会跑飞
+    // *(unsigned char *)MAP_ADDR = 0x1;
+    for (;;) {
+    }
+}	
+
+```
+
+## 10. 两个任务的切换
+
+x86为任务切换提供了硬件上的支持,只需要给每个任务配置一个tss结构，就可以自动的进行切换了
+
+1. 在timer_init中添加
+
+```c
+timer_init:
+	... 
+	outb %al, $0x20 // 发送EOI
+	// 使用内核的数据段寄存器
+	mov $KERNEL_DATA_SEG, %ax
+	mov %ax, %ds
+	call task_sched // 调用调试函数
+	...
+```
+
+2. 在os.h中添加
+
+```c
+#define TASK0_TSS_SEL           (5 * 8)
+#define TASK1_TSS_SEL           (6 * 8)
+```
+
+
+3. 
+
+```c
+/**
+ *  任务0
+ */
+void task_0 (void) {
+    // 加上下面这句会跑飞
+    // *(unsigned char *)MAP_ADDR = 0x1;
+
+    uint8_t color = 0;
+    for (;;) {
+        color++;
+
+        // CPL=3时，非特权级模式下，无法使用cli指令
+        // __asm__ __volatile__("cli");
+    }
+}
+/**
+ *  任务1
+ */
+void task_1 (void) {
+    uint8_t color = 0xff;
+    for (;;) {
+        color--;
+    }
+}
+
+/**
+ *  任务0和1的栈空间
+ */
+uint32_t task0_dpl0_stack[1024], task0_dpl3_stack[1024], task1_dpl0_stack[1024], task1_dpl3_stack[1024];
+
+/**
+ * 任务0的任务状态段
+ */
+uint32_t task0_tss[] = {
+    // prelink, esp0, ss0, esp1, ss1, esp2, ss2
+    0,  (uint32_t)task0_dpl0_stack + 4*1024, KERNEL_DATA_SEG , /* 后边不用使用 */ 0x0, 0x0, 0x0, 0x0,
+    // cr3, eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi,
+    (uint32_t)pg_dir,  (uint32_t)task_0/*入口地址*/, 0x202, 0xa, 0xc, 0xd, 0xb, (uint32_t)task0_dpl3_stack + 4*1024/* 栈 */, 0x1, 0x2, 0x3,
+    // es, cs, ss, ds, fs, gs, ldt, iomap
+    APP_DATA_SEG, APP_CODE_SEG, APP_DATA_SEG, APP_DATA_SEG, APP_DATA_SEG, APP_DATA_SEG, 0x0, 0x0,
+};
+
+uint32_t task1_tss[] = {
+    // prelink, esp0, ss0, esp1, ss1, esp2, ss2
+    0,  (uint32_t)task1_dpl0_stack + 4*1024, KERNEL_DATA_SEG , /* 后边不用使用 */ 0x0, 0x0, 0x0, 0x0,
+    // cr3, eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi,
+    (uint32_t)pg_dir,  (uint32_t)task_1/*入口地址*/, 0x202, 0xa, 0xc, 0xd, 0xb, (uint32_t)task1_dpl3_stack + 4*1024/* 栈 */, 0x1, 0x2, 0x3,
+    // es, cs, ss, ds, fs, gs, ldt, iomap
+    APP_DATA_SEG, APP_CODE_SEG, APP_DATA_SEG, APP_DATA_SEG, APP_DATA_SEG, APP_DATA_SEG, 0x0, 0x0,
+};
+
+// 两个进程的task0和tas1的tss段:自己设置，直接写会编译报错
+    [TASK0_TSS_SEL/ 8] = {0x0068, 0, 0xe900, 0x0},
+    [TASK1_TSS_SEL/ 8] = {0x0068, 0, 0xe900, 0x0},
+
+void task_sched (void) {
+    static int task_tss = TASK0_TSS_SEL;
+
+    // 更换当前任务的tss，然后切换过去
+    task_tss = (task_tss == TASK0_TSS_SEL) ? TASK1_TSS_SEL : TASK0_TSS_SEL;
+    uint32_t addr[] = {0, task_tss };
+    __asm__ __volatile__("ljmpl *(%[a])"::[a]"r"(addr));
+}
+
+// 添加任务和系统调用
+    gdt_table[TASK0_TSS_SEL / 8].base_l = (uint16_t)(uint32_t)task0_tss;
+    gdt_table[TASK1_TSS_SEL / 8].base_l = (uint16_t)(uint32_t)task1_tss;
+```
 
 
 

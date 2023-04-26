@@ -20,7 +20,21 @@ void task_0 (void) {
     // 加上下面这句会跑飞
     // *(unsigned char *)MAP_ADDR = 0x1;
 
+    uint8_t color = 0;
     for (;;) {
+        color++;
+
+        // CPL=3时，非特权级模式下，无法使用cli指令
+        // __asm__ __volatile__("cli");
+    }
+}
+/**
+ *  任务1
+ */
+void task_1 (void) {
+    uint8_t color = 0xff;
+    for (;;) {
+        color--;
     }
 }
 #define PDE_P			(1 << 0)
@@ -35,7 +49,33 @@ uint32_t pg_dir[1024] __attribute__((aligned(4096))) = {
 /**
  *  任务0和1的栈空间
  */
-uint32_t task0_dpl3_stack[1024];
+uint32_t task0_dpl0_stack[1024], task0_dpl3_stack[1024], task1_dpl0_stack[1024], task1_dpl3_stack[1024];
+
+/**
+ * 任务0的任务状态段
+ */
+uint32_t task0_tss[] = {
+    // prelink, esp0, ss0, esp1, ss1, esp2, ss2
+    0,  (uint32_t)task0_dpl0_stack + 4*1024, KERNEL_DATA_SEG , /* 后边不用使用 */ 0x0, 0x0, 0x0, 0x0,
+    // cr3, eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi,
+    (uint32_t)pg_dir,  (uint32_t)task_0/*入口地址*/, 0x202, 0xa, 0xc, 0xd, 0xb, (uint32_t)task0_dpl3_stack + 4*1024/* 栈 */, 0x1, 0x2, 0x3,
+    // es, cs, ss, ds, fs, gs, ldt, iomap
+    APP_DATA_SEG, APP_CODE_SEG, APP_DATA_SEG, APP_DATA_SEG, APP_DATA_SEG, APP_DATA_SEG, 0x0, 0x0,
+};
+
+uint32_t task1_tss[] = {
+    // prelink, esp0, ss0, esp1, ss1, esp2, ss2
+    0,  (uint32_t)task1_dpl0_stack + 4*1024, KERNEL_DATA_SEG , /* 后边不用使用 */ 0x0, 0x0, 0x0, 0x0,
+    // cr3, eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi,
+    (uint32_t)pg_dir,  (uint32_t)task_1/*入口地址*/, 0x202, 0xa, 0xc, 0xd, 0xb, (uint32_t)task1_dpl3_stack + 4*1024/* 栈 */, 0x1, 0x2, 0x3,
+    // es, cs, ss, ds, fs, gs, ldt, iomap
+    APP_DATA_SEG, APP_CODE_SEG, APP_DATA_SEG, APP_DATA_SEG, APP_DATA_SEG, APP_DATA_SEG, 0x0, 0x0,
+};
+/**
+ *  GDT表
+ * 总共5个段描述符：第0个不用，8、16为CPL=0时的代码段和数据段描述符
+ * 第24、32为CPL=3时的代码段和数据段描述符
+ */
 struct {uint16_t offset_l, selector, attr, offset_h;} idt_table[256] __attribute__((aligned(8))) = {1};
 struct {uint16_t limit_l, base_l, basehl_attr, base_limit;}gdt_table[256] __attribute__((aligned(8))) = {
     // 0x00cf9a000000ffff - 从0地址开始，P存在，DPL=0，Type=非系统段，32位代码段（非一致代码段），界限4G，
@@ -46,11 +86,24 @@ struct {uint16_t limit_l, base_l, basehl_attr, base_limit;}gdt_table[256] __attr
     [APP_CODE_SEG/ 8] = {0xffff, 0x0000, 0xfa00, 0x00cf},
     // 0x00cff3000000ffff - 从0地址开始，P存在，DPL=3，Type=非系统段，数据段，界限4G，可读写
     [APP_DATA_SEG/ 8] = {0xffff, 0x0000, 0xf300, 0x00cf},
+     // 两个进程的task0和tas1的tss段:自己设置，直接写会编译报错
+    [TASK0_TSS_SEL/ 8] = {0x0068, 0, 0xe900, 0x0},
+    [TASK1_TSS_SEL/ 8] = {0x0068, 0, 0xe900, 0x0},
 };
 
 void outb(uint8_t data, uint16_t port) {
 	__asm__ __volatile__("outb %[v], %[p]" : : [p]"d" (port), [v]"a" (data));
 }
+
+void task_sched (void) {
+    static int task_tss = TASK0_TSS_SEL;
+
+    // 更换当前任务的tss，然后切换过去
+    task_tss = (task_tss == TASK0_TSS_SEL) ? TASK1_TSS_SEL : TASK0_TSS_SEL;
+    uint32_t addr[] = {0, task_tss };
+    __asm__ __volatile__("ljmpl *(%[a])"::[a]"r"(addr));
+}
+
 void timer_init (void);
 
 void os_init (void) {
@@ -77,6 +130,10 @@ void os_init (void) {
     idt_table[0x20].offset_l = (uint32_t)timer_init & 0xffff;
     idt_table[0x20].selector = KERNEL_CODE_SEG;
     idt_table[0x20].attr = 0x8E00;      // 存在，DPL=0, 中断门
+    
+    // 添加任务和系统调用
+    gdt_table[TASK0_TSS_SEL / 8].base_l = (uint16_t)(uint32_t)task0_tss;
+    gdt_table[TASK1_TSS_SEL / 8].base_l = (uint16_t)(uint32_t)task1_tss;
 
     // 虚拟内存
     // 0x80000000开始的4MB区域的映射
