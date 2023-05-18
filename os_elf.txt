@@ -22,14 +22,14 @@ ELF Header:
 Section Headers:
   [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
   [ 0]                   NULL            00000000 000000 000000 00      0   0  0
-  [ 1] .text             PROGBITS        00007c00 000c00 000419 00  AX  0   0  1
+  [ 1] .text             PROGBITS        00007c00 000c00 000420 00  AX  0   0  1
   [ 2] .data             PROGBITS        0000a000 002000 0030ec 00  WA  0   0 4096
   [ 3] .bss              NOBITS          0000e000 0050ec 005000 00  WA  0   0 4096
   [ 4] .comment          PROGBITS        00000000 0050ec 000012 01  MS  0   0  1
   [ 5] .debug_aranges    PROGBITS        00000000 005100 000040 00      0   0  8
   [ 6] .debug_info       PROGBITS        00000000 005140 0002ee 00      0   0  1
   [ 7] .debug_abbrev     PROGBITS        00000000 00542e 00017f 00      0   0  1
-  [ 8] .debug_line       PROGBITS        00000000 0055ad 000170 00      0   0  1
+  [ 8] .debug_line       PROGBITS        00000000 0055ad 000172 00      0   0  1
   [ 9] .debug_frame      PROGBITS        00000000 005720 0000a4 00      0   0  4
   [10] .debug_str        PROGBITS        00000000 0057c4 0001e3 01  MS  0   0  1
   [11] .debug_line_str   PROGBITS        00000000 0059a7 000037 01  MS  0   0  1
@@ -46,7 +46,7 @@ There are no section groups in this file.
 
 Program Headers:
   Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
-  LOAD           0x000000 0x00007000 0x00007000 0x01019 0x01019 R E 0x1000
+  LOAD           0x000000 0x00007000 0x00007000 0x01020 0x01020 R E 0x1000
   LOAD           0x002000 0x0000a000 0x0000a000 0x030ec 0x09000 RW  0x1000
 
  Section to Segment mapping:
@@ -65,31 +65,31 @@ Symbol table '.symtab' contains 30 entries:
      1: 00000000     0 FILE    LOCAL  DEFAULT  ABS start.o
      2: 00007c0f     0 NOTYPE  LOCAL  DEFAULT    1 read_self_all
      3: 00007e00     0 NOTYPE  LOCAL  DEFAULT    1 _start_32
-     4: 00007e61     0 NOTYPE  LOCAL  DEFAULT    1 gdt_desc
-     5: 00007e67     0 NOTYPE  LOCAL  DEFAULT    1 idt_desc
-     6: 00007e41     0 NOTYPE  LOCAL  DEFAULT    1 task_0_entry
+     4: 00007e68     0 NOTYPE  LOCAL  DEFAULT    1 gdt_desc
+     5: 00007e6e     0 NOTYPE  LOCAL  DEFAULT    1 idt_desc
+     6: 00007e48     0 NOTYPE  LOCAL  DEFAULT    1 task_0_entry
      7: 00000000     0 FILE    LOCAL  DEFAULT  ABS os.c
      8: 0000a000  4096 OBJECT  LOCAL  DEFAULT    2 pg_table
      9: 0000d0e8     4 OBJECT  LOCAL  DEFAULT    2 task_tss.0
     10: 0000c8e8  2048 OBJECT  GLOBAL DEFAULT    2 gdt_table
     11: 00010000  4096 OBJECT  GLOBAL DEFAULT    3 task0_dpl3_stack
     12: 00012000  4096 OBJECT  GLOBAL DEFAULT    3 task1_dpl3_stack
-    13: 00007e6d    22 FUNC    GLOBAL DEFAULT    1 task_0
+    13: 00007e74    22 FUNC    GLOBAL DEFAULT    1 task_0
     14: 0000c000   104 OBJECT  GLOBAL DEFAULT    2 task0_tss
     15: 0000e000  4096 OBJECT  GLOBAL DEFAULT    3 map_phy_buffer
-    16: 00007ef0   297 FUNC    GLOBAL DEFAULT    1 os_init
-    17: 00007e4d     0 NOTYPE  GLOBAL DEFAULT    1 timer_init
+    16: 00007ef7   297 FUNC    GLOBAL DEFAULT    1 os_init
+    17: 00007e54     0 NOTYPE  GLOBAL DEFAULT    1 timer_init
     18: 00011000  4096 OBJECT  GLOBAL DEFAULT    3 task1_dpl0_stack
     19: 0000c080   104 OBJECT  GLOBAL DEFAULT    2 task1_tss
     20: 00007c00     0 NOTYPE  GLOBAL DEFAULT    1 _start
-    21: 00007e99    31 FUNC    GLOBAL DEFAULT    1 outb
+    21: 00007ea0    31 FUNC    GLOBAL DEFAULT    1 outb
     22: 0000d0ec     0 NOTYPE  GLOBAL DEFAULT    3 __bss_start
     23: 0000b000  4096 OBJECT  GLOBAL DEFAULT    2 pg_dir
     24: 0000d0ec     0 NOTYPE  GLOBAL DEFAULT    2 _edata
     25: 00013000     0 NOTYPE  GLOBAL DEFAULT    3 _end
-    26: 00007e83    22 FUNC    GLOBAL DEFAULT    1 task_1
+    26: 00007e8a    22 FUNC    GLOBAL DEFAULT    1 task_1
     27: 0000c0e8  2048 OBJECT  GLOBAL DEFAULT    2 idt_table
     28: 0000f000  4096 OBJECT  GLOBAL DEFAULT    3 task0_dpl0_stack
-    29: 00007eb8    56 FUNC    GLOBAL DEFAULT    1 task_sched
+    29: 00007ebf    56 FUNC    GLOBAL DEFAULT    1 task_sched
 
 No version information found in this file.

@@ -71,6 +71,11 @@ _start_32:
 	orl $(1 << 31), %eax
 	mov %eax, %cr0
 
+	// 设置当前的任务0
+	// 模拟中断返回，返回至任务0，特权级3模式
+	mov $TASK0_TSS_SEL, %ax		// 加载任务0对应的状态段
+	ltr %ax
+
 	// 下面模拟中断返回,从而实现从特权级0到特权级3的变化
 	// 中断发生时,会自动压入原SS, ESP, EFLAGS, CS, EIP到栈中
 	push $APP_DATA_SEG
